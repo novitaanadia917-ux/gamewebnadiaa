@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Mario Sederhana</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #222;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        h1 {
+            margin-bottom: 10px;
+        }
+        canvas {
+            background: #5c94fc; /* Warna langit khas Mario */
+            border: 4px solid white;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+        .info {
+            margin-top: 15px;
+            font-size: 16px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Mini Mario Bros</h1>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+    <div class="info">
+        <p><strong>Kontrol:</strong> Panah Kanan/Kiri (Bergerak) | Panah Atas / Spacebar (Lompat)</p>
+        <p>Hindari kotak HIJAU (musuh) dan ambil kotak KUNING (koin)!</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Konfigurasi Game
+        const gravity = 0.6;
+        let score = 0;
+        let gameOver = false;
+
+        // Karakter Utama (Mario)
+        const player = {
+            x: 50,
+            y: 300,
+            width: 30,
+            height: 40,
+            speed: 5,
+            velX: 0,
+            velY: 0,
+            jumping: false,
+            color: "#e52521" // Merah Mario
+        };
+
+        // Rintangan / Musuh (Goomba)
+        const enemy = {
+            x: 700,
+            y: 320,
+            width: 30,
+            height: 30,
+            speed: 3,
+            color: "#00a23d" // Hijau Luigi/Musuh
+        };
+
+        // Koin
+        const coin = {
+            x: 400,
+            y: 200,
+            width: 20,
+            height: 20,
+            color: "#fccd1b" // Kuning Koin
+        };
+
+        // Input Keyboard
+        const keys = {};
+        window.addEventListener("keydown", (e) => keys[e.key] = true);
+        window.addEventListener("keyup", (e) => keys[e.key] = false);
+
+        // Fungsi Reset Game
+        function resetGame() {
+            score = 0;
+            gameOver = false;
+            player.x = 50;
+            player.y = 300;
+            player.velX = 0;
+            player.velY = 0;
+            enemy.x = 800;
+            respawnCoin();
+            update();
+        }
+
+        function respawnCoin() {
+            coin.x = Math.random() * (canvas.width - 100) + 50;
+            coin.y = Math.random() * (canvas.height - 150) + 100;
+        }
+
+        // Cek Tabrakan (AABB Collision)
+        function checkCollision(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+
+        // Loop Game Utama
+        function update() {
+            if (gameOver) {
+                ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = "white";
+                ctx.font = "30px Arial";
+                ctx.fillText("GAME OVER", canvas.width / 2 - 90, canvas.height / 2 - 10);
+                ctx.font = "20px Arial";
+                ctx.fillText("Tekan 'Enter' untuk Main Lagi", canvas.width / 2 - 120, canvas.height / 2 + 30);
+                
+                if (keys["Enter"]) resetGame();
+                return;
+            }
+
+            // Gerakan Player
+            if (keys["ArrowRight"] || keys["d"]) {
+                if (player.x < canvas.width - player.width) player.x += player.speed;
+            }
+            if (keys["ArrowLeft"] || keys["a"]) {
+                if (player.x > 0) player.x -= player.speed;
+            }
+            if ((keys["ArrowUp"] || keys[" "]) && !player.jumping) {
+                player.velY = -12; // Kekuatan lompatan
+                player.jumping = true;
+            }
+
+            // Gravitasi Fisika
+            player.velY += gravity;
+            player.y += player.velY;
+
+            // Batas Tanah (Ground)
+            if (player.y >= 310) {
+                player.y = 310;
+                player.jumping = false;
+                player.velY = 0;
+            }
+
+            // Gerakan Musuh
+            enemy.x -= enemy.speed;
+            if (enemy.x < -enemy.width) {
+                enemy.x = canvas.width + Math.random() * 300; // Reset posisi musuh ke kanan lagi
+                enemy.speed = 3 + Math.random() * 3; // Variasi kecepatan baru
+            }
+
+            // Logika Tabrakan
+            if (checkCollision(player, enemy)) {
+                gameOver = true;
+            }
+
+            if (checkCollision(player, coin)) {
+                score += 10;
+                respawnCoin();
+            }
+
+            // --- PROSES RENDERING/GAMBAR ---
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Gambar Tanah (Ground)
+            ctx.fillStyle = "#733e39"; // Cokelat tanah Mario
+            ctx.fillRect(0, 350, canvas.width, 50);
+            ctx.fillStyle = "#79c026"; // Rumput hijau atas tanah
+            ctx.fillRect(0, 350, canvas.width, 10);
+
+            // Gambar Koin
+            ctx.fillStyle = coin.color;
+            ctx.fillRect(coin.x, coin.y, coin.width, coin.height);
+
+            // Gambar Musuh
+            ctx.fillStyle = enemy.color;
+            ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+
+            // Gambar Player (Mario)
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            // Detail Topi Kecil Mario
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(player.x + 5, player.y + 5, 10, 5);
+
+            // Tampilkan Skor
+            ctx.fillStyle = "white";
+            ctx.font = "20px Arial";
+            ctx.fillText("Skor: " + score, 20, 30);
+
+            requestAnimationFrame(update);
+        }
+
+        // Jalankan Game pertama kali
+        update();
+    </script>
+</body>
+</html>
